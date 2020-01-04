@@ -26,7 +26,7 @@ cache.get(3);       // returns 3
 cache.get(4);       // returns 4
 ```
 
-## 思路 - `Dictionary + LinkList`
+## 思路 - `Dictionary + List<T>`
 
 题目要求实现 LRU 缓存机制，需要在 O(1) 时间内完成如下操作：
 
@@ -108,78 +108,115 @@ public class LRUCache
  */
 ```
 
-## 思路 - 链表
+## 思路 - Dictionary + 双向链表
 
-1. 使用单链表将所有的 entry 连接起来。并使用 dictionary 来保存 key 与 entry 间的对应关系。
-2. 当调用 Set(key, value) 时:
-    a. 若 key 不存在时，将 value 封装成 CacheEntryNode 并 append 至链表尾部。即 _last。
-    b. 若 key 存在时，将 key 对应的 CacheEntryNode 移至链表尾部。
-3. 当调用 Get(key) 时，从 Dictionary 中找到对应的 CacheEntryNode，并将其移至链表尾部。最后返回 CacheEntryNode.Value。
+如果不是用`List<T>`, 也可以用一个双向链表来替代它的功能。
 
-总之在 LRUCache 中总是把最近更新过的 CacheEntryNode 放到链表尾部，并将 _last 指向它。则 _first 指向的为链表头部节点，它为最不活跃节点。整个链表是按时间顺序排列的，当发现 Capacity 不足时就清除链表头部节点。
+![img](image/figure1.png)
+
+1. Dictionary保存的是key，以及双向链表中每个节点对象。而key和value则保存在这个节点中。
+2. 插入一个新的对象到LRUCache中的时候, 将创建一个新的DoubleLinkedList对象。将这个对象插入到双向链表的头部。将key和这个对象的引用保存在Dictionary中。
+3. 从cache中更新或者读取对象的时候，可以从Dictionary中通过key找到DoubleLinkedList的对象，时间复杂度为O(1).然后再将DoubleLinkedList对象切换到双向链表的头部。在链表中移动元素的时间复杂度为O(1). 之所以使用双向链表而非单项链表的原因，就是因为双向链表中移除一个项元素的时候，可以通过当前的这个元素的pre和next分别获得它的上一个和下一个元素，将他们链接到一起，完成移除的动作。
+4. 当cahce满的时候，将链表的尾部的元素移除。同时，从Dictionary中将对应的记录移除。要在双向链表中找到尾部的元素，并且时间复杂度为O(1), 所有设置了双向链表的尾部节点tail. 为了能够以O(1)的时间复杂度从Dictionary中移除一个记录， DoubleLinkedList的对象除了记录value以外，还记录了key.
+
+总之在 LRUCache 中总是把最近更新过的 CacheEntryNode 放到链表头部，并将 head 指向它。则 tail 指向的为链表尾部节点，它为最不活跃节点。整个链表是按时间顺序排列的，当发现 Capacity 不足时就清除链表尾部节点。
 
 ## 代码 - 链表
 
 ```csharp
-
-public class Solution
+public class LRUCache
 {
-    public int Search(int[] nums, int target)
+    private Dictionary<int, DoubleLinkedList> cache;
+    private DoubleLinkedList head;
+    private DoubleLinkedList tail;
+    public int Count
     {
-        if (nums.Length == 0)
+        get { return this.cache.Count; }
+    }
+
+    private int capacity = 0;
+
+    public LRUCache(int capacity)
+    {
+        cache = new Dictionary<int, DoubleLinkedList>(capacity);
+        this.capacity = capacity;
+        this.head = new DoubleLinkedList();
+        this.tail = new DoubleLinkedList();
+        head.next = tail;
+        tail.pre = head;
+    }
+
+    public int Get(int key)
+    {
+        if (cache.ContainsKey(key))
         {
-            return -1;
+            Refresh(cache[key]);
+            return cache[key].val;
         }
+        else return -1;
+    }
 
-        int left = 0;
-        int right = nums.Length - 1;
+    public void Put(int key, int value)
+    {
 
-        while (left <= right)
+        if (cache.ContainsKey(key))
         {
-            int mid = (left + right) >> 1;
-
-            if (target == nums[mid])
-            {
-                return mid;
-            }
-
-            if (nums[left] < nums[mid]) // left part is in-order
-            {
-                if (target >= nums[left] && target < nums[mid])
-                {
-                    right = mid - 1;
-                }
-                else
-                {
-                    left = mid + 1;
-                }
-            }
-            else
-            {
-                // right part is in-order
-
-                if (target > nums[mid] && target <= nums[right])
-                {
-                    left = mid + 1;
-                }
-                else
-                {
-                    right = mid - 1;
-                }
-            }
+            cache[key].val = value;
+            Refresh(cache[key]);
         }
+        else
+        {
+            if (this.Count >= this.capacity) Flush();
+            // init DoubleLinkedList
+            DoubleLinkedList cur = new DoubleLinkedList();
+            cur.val = value;
+            cur.key = key;
+            // add to link
+            AttachToHead(cur);
+            // add to cache
+            cache.Add(key, cur);
+        }
+    }
 
-        return -1;
+    private void Flush()
+    {
+        int key = tail.pre.key;
+        cache.Remove(key);
+        tail.pre = tail.pre.pre;
+        tail.pre.next = tail;
+    }
+
+    private void Refresh(DoubleLinkedList item)
+    {
+        DoubleLinkedList pre = item.pre;
+        DoubleLinkedList next = item.next;
+        pre.next = next;
+        next.pre = pre;
+        AttachToHead(item);
+    }
+
+    private void AttachToHead(DoubleLinkedList item)
+    {
+        DoubleLinkedList tmp = head.next;
+        head.next = item;
+        item.pre = head;
+        item.next = tmp;
+        tmp.pre = item;
     }
 }
 
-public static void Main()
+public class DoubleLinkedList
 {
-    int[] nums = { 4, 5, 6, 7, 8, 1, 2, 3 };
-    int target = 8;
-
-    int index = (new Solution()).Search(nums, target);
-
-    System.Console.WriteLine(index);
+    public DoubleLinkedList pre;
+    public DoubleLinkedList next;
+    public int key;
+    public int val;
 }
+
+/**
+ * Your LRUCache object will be instantiated and called as such:
+ * LRUCache obj = new LRUCache(capacity);
+ * int param_1 = obj.Get(key);
+ * obj.Put(key,value);
+ */
 ```
