@@ -113,3 +113,36 @@ public class Solution {
     }
 }
 ```
+
+## 思路 - List
+
+## 代码 - List
+
+```csharp
+public class Solution {
+    public string SimplifyPath(string path) {
+
+        if(string.IsNullOrEmpty(path)) return "";
+
+        string[] p = path.Split(new char[]{'/'});
+
+        List<string> ans = new List<string>();
+
+        for(int i = 0; i < p.Length; i++)
+        {
+            if(p[i] == "" || p[i] == ".") continue;
+            if(p[i] == "..")
+            {
+                if(ans.Count > 0)
+                    ans.RemoveAt(ans.Count - 1);
+            }
+            else
+            {
+                ans.Add($"/{p[i]}");
+            }
+        }
+        if(ans.Count == 0) return "/";
+        else  return string.Join("", ans);
+    }
+}
+```
