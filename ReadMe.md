@@ -23,5 +23,3 @@ This repo using CSX by default. Following are steps to setup VS Code with runtim
 1. Locate the script file which you want to debug
 2. Bring up terminal window in the same directory, then run `scriptcs` to launch `scriptcs` as `Repl` mode
 3. In `scriptcs`, type command `:openvs "test.csx"` to launch VS and the target script. Then you will get the same experience of VS to debug script file.
-
-Test
